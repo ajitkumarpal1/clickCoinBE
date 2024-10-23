@@ -19,55 +19,17 @@ const typeDefs = `
   type Query {
     hello: String
     getCoinMetaDataByUserId(userId: ID!): CoinMetaData
-    incrimentCoin(userId: ID!):CoinMetaData
+  }
+
+  type Mutation {
+    incrimentCoin(userId: ID!, increment: Int!): CoinMetaData
   }
 `;
 
 const resolvers = {
   Query: {
     hello: () => 'Hello World!',
-    incrimentCoin: async (_: any, { userId }: { userId: string }) => {
-      // Fetch current coin count
-      const { data: currentData, error: fetchError } = await supabase
-      .from('coinMetaData')
-      .select('*')
-      .eq('userId', userId)
-      .single();
-    
-      // Handle errors fetching current data
-      if (fetchError || !currentData) {
-        console.error('Error fetching coin metadata:', fetchError);
-        throw new Error(fetchError?.message || 'User not found or has no coins');
-      }
-      // Increment the coin count
-      const newCoinCount = currentData.coinCount + 1;
-      console.log("=>>>",newCoinCount)
-      // Update the coin count in the database
-      const { data: updatedData, error: updateError } = await supabase
-        .from('coinMetaData')
-        .update({ coinCount: newCoinCount }) // Set the new coin count
-        .eq('userId', userId); // Ensure we update the correct user
-    
-      // Handle errors during the update
-      if (updateError) {
-        console.error('Error updating coin count:', updateError);
-        throw new Error(updateError.message);
-      }
 
-      const { data:newdata, error:newEr } = await supabase
-        .from('coinMetaData')
-        .select('*')
-        .eq('userId', userId)
-        .single();
-
-        if (newEr) {
-          console.error('Error updating coin count:', newEr);
-          throw new Error(newEr.message);
-        }
-      // Return the updated data
-      return newdata; // This will return the updated record
-    }
-    ,
     getCoinMetaDataByUserId: async (_: any, { userId }: { userId: string }) => {
       // Fetch coin metadata from Supabase
       const { data, error } = await supabase
@@ -84,20 +46,21 @@ const resolvers = {
       // Handle case when no data is found
       if (!data) {
         try {
-          const response = await fetch(`https://api.telegram.org/bot7864622420:AAFweAdwvbEKnbBGxILWRDAVFB2c-CmeL7w/getChat?chat_id=${userId}`);
+          const response = await fetch(`https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getChat?chat_id=${userId}`);
           const telegramUser = await response.json();
 
           if (telegramUser.ok) {
-            // User exists, insert into Supabase
+            // Insert new user into Supabase if found
             await supabase
               .from('coinMetaData')
-              .insert([{ userId: userId }])
-              .select();
-              const { data: newData, error: insertError } = await supabase
+              .insert([{ userId: userId, coinCount: 0 }]);
+
+            const { data: newData, error: insertError } = await supabase
               .from('coinMetaData')
               .select('*')
               .eq('userId', userId)
               .single();
+
             if (insertError) {
               console.error('Error inserting new user:', insertError);
               throw new Error('Error inserting new user');
@@ -115,6 +78,37 @@ const resolvers = {
       }
 
       return null; // Return null if no data and no user found
+    },
+  },
+
+  Mutation: {
+    incrimentCoin: async (_: any, { userId, increment }: { userId: string; increment: number }) => {
+
+
+      // Update the coin count in the database
+      const tp = await supabase
+        .from('coinMetaData')
+        .update({ coinCount: increment }) // Set the new coin count
+        .eq('userId', userId);
+      console.log(tp)
+      const { data: updatedData, error: updateError } = tp
+      if (updateError) {
+        console.error('Error updating coin count:', updateError);
+        throw new Error(updateError.message);
+      }
+
+      const { data: userD, error: fatchinErr } = await supabase
+        .from('coinMetaData')
+        .select("*") // Set the new coin count
+        .eq('userId', userId)
+        .single();
+        console.log(userD)
+        if (fatchinErr) {
+          console.error('Error updating coin count:', fatchinErr);
+          throw new Error(fatchinErr.message);
+        }
+      // Return the updated data
+      return userD; // This will return the updated record
     },
   },
 };
