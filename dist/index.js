@@ -41,7 +41,7 @@ const resolvers = {
             // Handle case when no data is found
             if (!data) {
                 try {
-                    const response = await fetch(`https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getChat?chat_id=${userId}`);
+                    const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_TOKEN}/getChat?chat_id=${userId}`);
                     const telegramUser = await response.json();
                     if (telegramUser.ok) {
                         // Insert new user into Supabase if found
